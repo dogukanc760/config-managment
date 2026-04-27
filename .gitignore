@@ -1,0 +1,29 @@
+# SSH & AWS credentials
+*.pem
+*.key
+*.pub
+*.p12
+*.pfx
+
+# Ansible sensitive files
+roles/ssh/files/
+host_vars/
+group_vars/vault*
+.vault_pass
+vault.yml
+
+# Inventory with real IPs (use inventory.ini.example instead)
+# inventory.ini  # uncomment if you want to hide inventory too
+
+# Ansible cache & logs
+.ansible/
+*.retry
+ansible.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

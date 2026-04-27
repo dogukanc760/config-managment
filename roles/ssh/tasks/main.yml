@@ -1,0 +1,5 @@
+- name: Add public key
+  authorized_key:
+    user: ubuntu
+    key: "{{ lookup('file', 'roles/ssh/files/config-manager.pub') }}"
+    state: present

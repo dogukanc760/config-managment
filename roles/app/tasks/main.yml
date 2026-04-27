@@ -1,0 +1,15 @@
+- name: Create web directory
+  file:
+    path: /var/www/html
+    state: directory
+
+- name: Upload website tarball
+  copy:
+    src: website.tar.gz
+    dest: /tmp/website.tar.gz
+
+- name: Extract website
+  unarchive:
+    src: /tmp/website.tar.gz
+    dest: /var/www/html
+    remote_src: yes
