@@ -1,52 +1,83 @@
-# Configuration Management with Ansible
+# Infrastructure & Configuration Management with Terraform + Ansible
 
-An Ansible playbook project that automates the configuration of a Linux server on AWS EC2. Built as part of the [roadmap.sh DevOps projects](https://roadmap.sh/projects/configuration-management).
+End-to-end IaC pipeline that provisions an AWS EC2 instance with Terraform and configures it with Ansible. Built as part of the [roadmap.sh DevOps projects](https://roadmap.sh/projects/configuration-management).
 
-## What it does
+## Stack
 
-Runs 4 roles in sequence to fully configure a fresh Ubuntu server:
+| Tool | Role |
+|------|------|
+| **Terraform** | Provision EC2 instance, Security Group, Key Pair |
+| **Ansible** | Configure the server (nginx, app deploy, SSH hardening) |
 
-| Role | Description |
+## How it works
+
+```
+terraform apply → EC2 instance ready → ansible-playbook → fully configured server
+```
+
+Terraform provisions the infrastructure and outputs the public DNS. Ansible picks it up via `inventory.ini` and runs 4 roles in sequence:
+
+| Role | What it does |
 |------|-------------|
-| `base` | Updates apt cache, installs utilities (`curl`, `vim`, `ufw`), sets up `fail2ban` |
-| `nginx` | Installs and enables nginx, deploys config via Jinja2 template |
-| `app` | Uploads and extracts a static HTML website to `/var/www/html` |
-| `ssh` | Adds a public key to the server's `authorized_keys` |
+| `base` | apt update, installs utilities, enables `fail2ban` |
+| `nginx` | Installs nginx, deploys Jinja2-templated config |
+| `app` | Uploads and extracts static website to `/var/www/html` |
+| `ssh` | Adds public key to `authorized_keys` |
 
 ## Project Structure
 
 ```
 .
+├── terraform/
+│   ├── main.tf            # EC2, Security Group, Key Pair resources
+│   ├── variables.tf       # Region, AMI, instance type
+│   └── outputs.tf         # Public IP, DNS, SSH command, Ansible inventory line
 ├── inventory.ini          # Target server(s)
-├── setup.yml              # Main playbook
+├── setup.yml              # Main Ansible playbook
 └── roles/
-    ├── base/tasks/
-    ├── nginx/tasks/ & templates/ & handlers/
-    ├── app/tasks/ & files/
-    └── ssh/tasks/
+    ├── base/
+    ├── nginx/
+    ├── app/
+    └── ssh/
 ```
 
 ## Requirements
 
-- Ansible installed locally (`brew install ansible` on macOS)
-- An Ubuntu server with SSH access (tested on AWS EC2)
+- Terraform >= 1.0
+- Ansible installed locally
+- AWS credentials configured (`~/.aws/credentials`)
 - `.pem` key file for EC2 authentication
 
 ## Usage
 
-```bash
-# Run all roles
-ansible-playbook setup.yml -i inventory.ini
+### 1. Provision infrastructure
 
-# Run a specific role only
-ansible-playbook setup.yml -i inventory.ini --tags "nginx"
+```bash
+cd terraform
+terraform init
+terraform apply
 ```
 
-## Setup
+### 2. Update inventory
 
-1. Update `inventory.ini` with your server's IP and key path
-2. Place your static site files in `roles/app/files/website.tar.gz`
-3. Run the playbook
+Copy the `ansible_inventory` output from Terraform into `inventory.ini`:
+
+```ini
+[servers]
+ec2-xx-xx-xx-xx.region.compute.amazonaws.com ansible_user=ubuntu ansible_ssh_private_key_file=./config-manager.pem
+```
+
+### 3. Configure the server
+
+```bash
+ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory.ini setup.yml
+```
+
+### Teardown
+
+```bash
+cd terraform && terraform destroy
+```
 
 ## Notes
 
