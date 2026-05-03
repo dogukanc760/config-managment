@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api-green
+  namespace: todo
+  labels:
+    app: todo-api
+    version: green
+spec:
+  replicas: 0  # Başlangıçta scale-down, deploy sırasında 2'ye çıkar
+  selector:
+    matchLabels:
+      app: todo-api
+      version: green
+  template:
+    metadata:
+      labels:
+        app: todo-api
+        version: green
+    spec:
+      containers:
+        - name: todo-api
+          image: dogukanc760/todo-api:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: api-config
+          env:
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-user
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-password
+            - name: MONGO_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-secret
+                  key: mongo-db
+            - name: MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@mongo:27017/$(MONGO_DB)?authSource=admin"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"

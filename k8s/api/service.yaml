@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-api
+  namespace: todo
+  annotations:
+    active-version: blue  # Switch sırasında güncellenir
+spec:
+  selector:
+    app: todo-api
+    version: blue  # kubectl patch ile green'e çevrilir
+  ports:
+    - port: 80
+      targetPort: 3000

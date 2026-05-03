@@ -1,0 +1,82 @@
+- name: Install prerequisites
+  apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Add Docker GPG key
+  shell: |
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: Add Docker repository
+  shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  args:
+    creates: /etc/apt/sources.list.d/docker.list
+
+- name: Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+- name: Enable and start Docker
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Add ubuntu user to docker group
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+
+- name: Create app directory
+  file:
+    path: /opt/todo-app
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Copy docker-compose.yml
+  copy:
+    src: docker-compose.yml
+    dest: /opt/todo-app/docker-compose.yml
+    owner: ubuntu
+    group: ubuntu
+
+- name: Copy nginx config
+  copy:
+    src: nginx.conf
+    dest: /opt/todo-app/nginx/nginx.conf
+    owner: ubuntu
+    group: ubuntu
+
+- name: Copy .env file
+  copy:
+    src: .env
+    dest: /opt/todo-app/.env
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+
+- name: Pull latest images and start containers
+  shell: docker compose pull && docker compose up -d
+  args:
+    chdir: /opt/todo-app
+  become_user: ubuntu
